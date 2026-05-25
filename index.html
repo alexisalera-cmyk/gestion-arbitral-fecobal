@@ -688,22 +688,26 @@ function renderEstadisticas(){
               +'<div style="height:1px;background:var(--d5);margin-bottom:10px"></div>'
               +'<div style="overflow-x:auto"><table class="data-table" style="font-size:12px">'
               +'<thead><tr><th>F.Prog.</th><th>Fecha</th><th>Hora</th><th>Cancha</th><th>Categoría</th><th>Árbitro 1</th><th>Árbitro 2</th><th>Asoc.</th></tr></thead>'
-              +'<tbody>'+partidos.map(d=>{
+              +'<tbody>'+( ()=>{ const _seen=new Set(); return partidos.map(d=>{
                 const km1=d.km_arb1||0;
                 const km2=d.km_arb2||0;
-                const km1Show=km1>0?km1+'km':'—';
-                const km2Show=km2>0?km2+'km':'—';
+                const _k1=(d.arbitro1||'')+'|'+(d.dia||'')+'|'+(d.cancha||'');
+                const _k2=(d.arbitro2||'')+'|'+(d.dia||'')+'|'+(d.cancha||'');
+                const _s1=km1>0&&!_seen.has(_k1); if(_s1)_seen.add(_k1);
+                const _s2=km2>0&&!_seen.has(_k2); if(_s2)_seen.add(_k2);
+                const km1Show=_s1?km1+'km':'';
+                const km2Show=_s2?km2+'km':'';
                 return '<tr>'
                   +'<td class="mono">'+d.fecha+'</td>'
                   +'<td style="font-size:11px">'+d.dia+'</td>'
                   +'<td class="mono">'+d.hora+'</td>'
                   +'<td>'+d.cancha+'</td>'
                   +'<td>'+d.categoria+'</td>'
-                  +'<td style="font-weight:500">'+d.arbitro1+' <span class="mono" style="font-size:10px;color:'+(km1>0?'var(--c)':'var(--hi)')+'">'+km1Show+'</span></td>'
-                  +'<td style="color:var(--mu)">'+d.arbitro2+' <span class="mono" style="font-size:10px;color:'+(km2>0?'var(--c)':'var(--hi)')+'">'+km2Show+'</span></td>'
+                  +'<td style="font-weight:500">'+d.arbitro1+(_s1?' <span class="mono" style="font-size:10px;color:var(--c)">'+km1Show+'</span>':'')+'</td>'
+                  +'<td style="color:var(--mu)">'+d.arbitro2+(_s2?' <span class="mono" style="font-size:10px;color:var(--c)">'+km2Show+'</span>':'')+'</td>'
                   +'<td><span class="badge '+(d.asociacion==='ACAB'?'badge-a':'badge-u')+'">'+d.asociacion+'</span></td>'
                   +'</tr>';
-              }).join('')
+              }) }).join('')
               +'</tbody></table></div></div></div>';
           }).join('');
         })()}
