@@ -1081,27 +1081,69 @@ function renderArbStats(){
 
 function validateData(){
   const issues=[];
-  // Check for duplicate names
-  const seen={};
-  ARBITROS.forEach(a=>{const n=normNombre(a.nombre);if(seen[n])issues.push('Duplicado: '+a.nombre);seen[n]=true;});
-  // Check for missing IDs
-  ARBITROS.forEach(a=>{if(!a.id)issues.push('Sin ID: '+a.nombre);});
-  // Check for designaciones without matching arbitro
-  const allNames=new Set(ARBITROS.map(a=>normNombre(a.nombre)));
-  const missing=new Set();
-  DESIGNACIONES.forEach(d=>{
-    if(d.arbitro1&&!allNames.has(normNombre(d.arbitro1)))missing.add(d.arbitro1);
-    if(d.arbitro2&&!allNames.has(normNombre(d.arbitro2)))missing.add(d.arbitro2);
+  const arbIds=new Set(ARBITROS.map(a=>a.id));
+  const sedeIds=new Set(SEDES.map(s=>s.id));
+  const clubIds=new Set(CLUBES.map(c=>c.id));
+
+  // Duplicados en árbitros
+  const seenArb={};
+  ARBITROS.forEach(a=>{const n=normNombre(a.nombre);if(seenArb[n])issues.push('⚠️ Árbitro duplicado: '+a.nombre);seenArb[n]=true;});
+  // Duplicados en sedes
+  const seenSede={};
+  SEDES.forEach(s=>{if(seenSede[s.nombre])issues.push('⚠️ Sede duplicada: '+s.nombre);seenSede[s.nombre]=true;});
+  // Duplicados en clubes
+  const seenClub={};
+  CLUBES.forEach(c=>{if(seenClub[c.nombre])issues.push('⚠️ Club duplicado: '+c.nombre);seenClub[c.nombre]=true;});
+
+  // IDs faltantes
+  ARBITROS.forEach(a=>{if(!a.id)issues.push('🔴 Árbitro sin ID: '+a.nombre);});
+  SEDES.forEach(s=>{if(!s.id)issues.push('🔴 Sede sin ID: '+s.nombre);});
+  CLUBES.forEach(c=>{if(!c.id)issues.push('🔴 Club sin ID: '+c.nombre);});
+
+  // Designaciones con IDs que no matchean
+  DESIGNACIONES.forEach((d,i)=>{
+    if(d.arb_id1&&!arbIds.has(d.arb_id1))issues.push('🔴 Partido '+(i+1)+': arb_id1 '+d.arb_id1+' no existe ('+d.arbitro1+')');
+    if(d.arb_id2&&!arbIds.has(d.arb_id2))issues.push('🔴 Partido '+(i+1)+': arb_id2 '+d.arb_id2+' no existe ('+d.arbitro2+')');
+    if(d.sede_id&&!sedeIds.has(d.sede_id))issues.push('🔴 Partido '+(i+1)+': sede_id '+d.sede_id+' no existe ('+d.cancha+')');
+    if(d.club_id_a&&!clubIds.has(d.club_id_a))issues.push('🔴 Partido '+(i+1)+': club_id_a '+d.club_id_a+' no existe ('+d.equipo_a+')');
+    if(d.club_id_b&&!clubIds.has(d.club_id_b))issues.push('🔴 Partido '+(i+1)+': club_id_b '+d.club_id_b+' no existe ('+d.equipo_b+')');
+    // Sin ID asignado
+    if(d.arbitro1&&!d.arb_id1)issues.push('🟡 Partido '+(i+1)+': árbitro1 "'+d.arbitro1+'" sin ID');
+    if(d.arbitro2&&!d.arb_id2)issues.push('🟡 Partido '+(i+1)+': árbitro2 "'+d.arbitro2+'" sin ID');
+    if(d.cancha&&!d.sede_id)issues.push('🟡 Partido '+(i+1)+': cancha "'+d.cancha+'" sin sede_id');
+    if(d.equipo_a&&!d.club_id_a)issues.push('🟡 Partido '+(i+1)+': equipo_a "'+d.equipo_a+'" sin club_id');
+    if(d.equipo_b&&!d.club_id_b)issues.push('🟡 Partido '+(i+1)+': equipo_b "'+d.equipo_b+'" sin club_id');
   });
-  missing.forEach(m=>issues.push('Sin ficha: '+m));
-  // Check for residencias that don't match DISTANCIAS cities
+
+  // Árbitros en designaciones sin ficha
+  const allNames=new Set(ARBITROS.map(a=>normNombre(a.nombre)));
+  const missingArb=new Set();
+  DESIGNACIONES.forEach(d=>{
+    if(d.arbitro1&&!allNames.has(normNombre(d.arbitro1)))missingArb.add(d.arbitro1);
+    if(d.arbitro2&&!allNames.has(normNombre(d.arbitro2)))missingArb.add(d.arbitro2);
+  });
+  missingArb.forEach(m=>issues.push('🟡 Árbitro sin ficha: '+m));
+
+  // Sedes sin ciudad en DISTANCIAS
   const distCities=new Set();
   Object.keys(DISTANCIAS).forEach(k=>{k.split('|').forEach(c=>distCities.add(c));});
   distCities.add('Córdoba Capital');
-  ARBITROS.forEach(a=>{
-    if(a.residencia&&!distCities.has(a.residencia))issues.push('Residencia desconocida: '+a.nombre+' -> '+a.residencia);
+  SEDES.forEach(s=>{
+    if(s.ciudad&&!distCities.has(s.ciudad))issues.push('🔴 Sede "'+s.nombre+'": ciudad "'+s.ciudad+'" no tiene distancias configuradas');
   });
-  if(issues.length)console.warn('VALIDACIÓN:',issues);
+
+  // Residencias sin distancias
+  ARBITROS.forEach(a=>{
+    if(a.residencia&&!distCities.has(a.residencia))issues.push('🔴 Árbitro "'+a.nombre+'": residencia "'+a.residencia+'" sin distancias');
+  });
+
+  // Resultado
+  if(issues.length){
+    console.warn('VALIDACIÓN: '+issues.length+' problemas encontrados');
+    issues.forEach(i=>console.warn(i));
+  }else{
+    console.log('✅ VALIDACIÓN: todo OK');
+  }
   return issues;
 }
 </script>
