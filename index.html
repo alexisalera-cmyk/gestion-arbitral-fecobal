@@ -979,6 +979,134 @@ function renderEstadisticas(){
             </tr>`;}).join('')}
           </tbody>
         </table></div>
+
+    ${(()=>{
+      // ── 4. PAREJAS DE ÁRBITROS MÁS FRECUENTES ──
+      const parejas={};
+      DESIGNACIONES.forEach(d=>{
+        if(d.arbitro1&&d.arbitro2){
+          const p=[d.arbitro1,d.arbitro2].sort().join(' + ');
+          parejas[p]=(parejas[p]||0)+1;
+        }
+      });
+      const topParejas=Object.entries(parejas).sort((a,b)=>b[1]-a[1]).slice(0,15);
+      const parejasHtml=topParejas.map(([par,n],i)=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="font-size:11px;color:var(--hi);min-width:20px">'+(i+1)+'</span><span style="font-size:13px;flex:1;color:var(--tx)">'+par+'</span><span style="font-size:13px;font-weight:600">'+n+'</span></div>').join('');
+
+      // ── 8. CARGA MÁXIMA POR DÍA ──
+      const arbDia={};
+      DESIGNACIONES.forEach(d=>{
+        [d.arbitro1,d.arbitro2].forEach(a=>{
+          if(a){const k=a+'|'+d.dia;arbDia[k]=(arbDia[k]||0)+1;}
+        });
+      });
+      const cargaMax=Object.entries(arbDia).map(([k,n])=>{const [nombre,dia]=k.split('|');return {nombre,dia,n};}).sort((a,b)=>b.n-a.n).slice(0,15);
+      const cargaHtml=cargaMax.map((r,i)=>{const arb=ARBITROS.find(a=>normNombre(a.nombre)===normNombre(r.nombre));return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="font-size:11px;color:var(--hi);min-width:20px">'+(i+1)+'</span><span style="font-size:13px;flex:1;color:var(--tx)">'+r.nombre+'</span><span style="font-size:11px;color:var(--mu)">'+r.dia+'</span><span style="font-size:13px;font-weight:600">'+r.n+' partidos</span>'+(arb?'<span class="badge '+(arb.asociacion==='ACAB'?'badge-a':'badge-u')+'">'+arb.asociacion+'</span>':'')+'</div>';}).join('');
+
+      // ── 11. PROMEDIO KM POR PARTIDO ──
+      const kmPorArb={};
+      ARBITROS.forEach(a=>{
+        const pts=getPartidosArbitro(a.nombre);
+        const km=getKmArbitro(a.nombre);
+        if(pts.length>0) kmPorArb[a.nombre]={km,pts:pts.length,prom:Math.round(km/pts.length),asoc:a.asociacion};
+      });
+      const topKmProm=Object.entries(kmPorArb).sort((a,b)=>b[1].prom-a[1].prom).filter(([n,v])=>v.prom>0).slice(0,15);
+      const kmPromHtml=topKmProm.map(([nombre,v],i)=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="font-size:11px;color:var(--hi);min-width:20px">'+(i+1)+'</span><span style="font-size:13px;flex:1;color:var(--tx)">'+nombre+'</span><span style="font-size:11px;color:var(--mu)">'+v.km+'km / '+v.pts+'p</span><span style="font-size:13px;font-weight:600">'+v.prom+' km/p</span><span class="badge '+(v.asoc==='ACAB'?'badge-a':'badge-u')+'">'+v.asoc+'</span></div>').join('');
+
+      // ── 12. RANKING SEDES MÁS USADAS ──
+      const porSede={};
+      DESIGNACIONES.forEach(d=>{const s=(d.cancha||'').trim();if(s)porSede[s]=(porSede[s]||0)+1;});
+      const topSedes=Object.entries(porSede).sort((a,b)=>b[1]-a[1]);
+      const maxSede=topSedes[0]?topSedes[0][1]:1;
+      const sedesHtml=topSedes.map(([sede,n],i)=>{const ciudad=getCiudadCancha(sede);return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="font-size:11px;color:var(--hi);min-width:20px">'+(i+1)+'</span><span style="font-size:12px;flex:1;color:var(--tx)">'+sede+' <span style="font-size:10px;color:var(--mu)">('+ciudad+')</span></span><div style="width:80px;height:4px;background:var(--d5);border-radius:2px;overflow:hidden"><div style="height:100%;background:var(--c);width:'+(n/maxSede*100)+'%"></div></div><span style="font-size:12px;font-weight:500;min-width:28px;text-align:right">'+n+'</span></div>';}).join('');
+
+      // ── 20. TOTAL ARANCELES ──
+      let totalArancel=0,arancelAcab=0,arancelUcah=0;
+      DESIGNACIONES.forEach(d=>{
+        const a=parseInt(d.arancel)||0;
+        totalArancel+=a;
+        if(d.asociacion==='ACAB')arancelAcab+=a;else arancelUcah+=a;
+      });
+      const fmt=n=>'$'+n.toLocaleString('es-AR');
+      const arancelHtml='<table class="data-table" style="font-size:13px"><thead><tr><th></th><th class="acab">ACAB</th><th class="ucah">UCAH</th><th style="color:var(--mu)">Total</th></tr></thead><tbody>'
+        +'<tr><td class="row-label">Aranceles</td><td class="val-acab">'+fmt(arancelAcab)+'</td><td class="val-ucah">'+fmt(arancelUcah)+'</td><td style="color:var(--mu)">'+fmt(totalArancel)+'</td></tr>'
+        +'<tr><td class="row-label">Prom/partido</td><td class="val-acab">'+fmt(Math.round(arancelAcab/DESIGNACIONES.filter(d=>d.asociacion==='ACAB').length))+'</td><td class="val-ucah">'+fmt(Math.round(arancelUcah/DESIGNACIONES.filter(d=>d.asociacion==='UCAH').length))+'</td><td style="color:var(--mu)">'+fmt(Math.round(totalArancel/DESIGNACIONES.length))+'</td></tr>'
+        +'</tbody></table>';
+
+      // ── 21. VIÁTICOS POR CLUB ──
+      const viatClub={};
+      DESIGNACIONES.forEach(d=>{
+        const v=parseInt(d.viatico)||0;
+        if(v>0){
+          if(d.equipo_a){viatClub[d.equipo_a]=(viatClub[d.equipo_a]||0)+v;}
+          if(d.equipo_b){viatClub[d.equipo_b]=(viatClub[d.equipo_b]||0)+v;}
+        }
+      });
+      const topViatClub=Object.entries(viatClub).sort((a,b)=>b[1]-a[1]);
+      let totalViat=0;topViatClub.forEach(([c,v])=>totalViat+=v);
+      const viatHtml='<div style="margin-bottom:12px;font-size:13px;color:var(--mu)">Total viáticos: <strong style="color:var(--tx)">'+fmt(totalViat)+'</strong></div>'
+        +topViatClub.map(([club,v],i)=>'<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="font-size:11px;color:var(--hi);min-width:20px">'+(i+1)+'</span><span style="font-size:13px;flex:1;color:var(--tx)">'+club+'</span><span style="font-size:13px;font-weight:600">'+fmt(v)+'</span></div>').join('');
+
+      // ── 22. COSTO POR FECHA ──
+      const costoFecha={};
+      DESIGNACIONES.forEach(d=>{
+        const h=d.hoja||'Sin fecha';
+        if(!costoFecha[h])costoFecha[h]={arancel:0,viatico:0};
+        costoFecha[h].arancel+=(parseInt(d.arancel)||0);
+        costoFecha[h].viatico+=(parseInt(d.viatico)||0);
+      });
+      const orden=['FECHA 1','REP1','FECHA 2','FECHA 3','FECHA 4','FECHA 5','FECHA 6','FECHA 7','F REC 2'];
+      const fechasOrden=orden.filter(h=>costoFecha[h]).concat(Object.keys(costoFecha).filter(h=>!orden.includes(h)));
+      const costoHtml='<table class="data-table" style="font-size:12px"><thead><tr><th>Fecha</th><th>Aranceles</th><th>Viáticos</th><th>Total</th></tr></thead><tbody>'
+        +fechasOrden.map(h=>{const c=costoFecha[h];return '<tr><td style="font-weight:500">'+h+'</td><td>'+fmt(c.arancel)+'</td><td>'+fmt(c.viatico)+'</td><td style="font-weight:600">'+fmt(c.arancel+c.viatico)+'</td></tr>';}).join('')
+        +'<tr style="border-top:2px solid var(--d5);font-weight:700"><td>TOTAL</td><td>'+fmt(fechasOrden.reduce((s,h)=>s+costoFecha[h].arancel,0))+'</td><td>'+fmt(fechasOrden.reduce((s,h)=>s+costoFecha[h].viatico,0))+'</td><td>'+fmt(fechasOrden.reduce((s,h)=>s+costoFecha[h].arancel+costoFecha[h].viatico,0))+'</td></tr>'
+        +'</tbody></table>';
+
+      // ── 25. COSTO PROMEDIO POR PARTIDO POR SEDE ──
+      const costoSede={};
+      DESIGNACIONES.forEach(d=>{
+        const s=(d.cancha||'').trim();
+        if(s){
+          if(!costoSede[s])costoSede[s]={arancel:0,viatico:0,n:0};
+          costoSede[s].arancel+=(parseInt(d.arancel)||0);
+          costoSede[s].viatico+=(parseInt(d.viatico)||0);
+          costoSede[s].n++;
+        }
+      });
+      const topCostoSede=Object.entries(costoSede).sort((a,b)=>(b[1].arancel+b[1].viatico)/b[1].n-(a[1].arancel+a[1].viatico)/a[1].n);
+      const costoSedeHtml='<table class="data-table" style="font-size:12px"><thead><tr><th>Sede</th><th>Partidos</th><th>Arancel total</th><th>Viático total</th><th>Prom/partido</th></tr></thead><tbody>'
+        +topCostoSede.map(([sede,v])=>'<tr><td>'+sede+'</td><td>'+v.n+'</td><td>'+fmt(v.arancel)+'</td><td>'+fmt(v.viatico)+'</td><td style="font-weight:600">'+fmt(Math.round((v.arancel+v.viatico)/v.n))+'</td></tr>').join('')
+        +'</tbody></table>';
+
+      // ── 27. FEM vs MASC ──
+      let fem=0,masc=0,mixto=0;
+      DESIGNACIONES.forEach(d=>{
+        const cat=(d.categoria||'').toUpperCase();
+        if(cat.includes('FEM'))fem++;
+        else if(cat.includes('MASC')||cat.includes('MAYOR B ')||cat.includes('MAYOR C'))masc++;
+        else mixto++;
+      });
+      const genTotal=fem+masc+mixto;
+      const genPct=(n)=>genTotal?Math.round(n/genTotal*100):0;
+      const genHtml='<div style="margin-bottom:14px">'
+        +'<div style="display:flex;gap:20px;margin-bottom:12px">'
+        +'<div style="text-align:center;flex:1"><div style="font-size:24px;font-weight:700;color:var(--c)">'+fem+'</div><div style="font-size:11px;color:var(--mu)">Femenino ('+genPct(fem)+'%)</div></div>'
+        +'<div style="text-align:center;flex:1"><div style="font-size:24px;font-weight:700;color:var(--hi)">'+masc+'</div><div style="font-size:11px;color:var(--mu)">Masculino ('+genPct(masc)+'%)</div></div>'
+        +(mixto?'<div style="text-align:center;flex:1"><div style="font-size:24px;font-weight:700;color:var(--mu)">'+mixto+'</div><div style="font-size:11px;color:var(--mu)">Sin definir ('+genPct(mixto)+'%)</div></div>':'')
+        +'</div>'
+        +'<div class="bbar"><div style="height:100%;background:var(--c);width:'+genPct(fem)+'%"></div><div style="height:100%;background:var(--hi);width:'+genPct(masc)+'%"></div></div>'
+        +'<div class="bbar-labels"><span style="font-size:10px;color:var(--c)">FEM '+genPct(fem)+'%</span><span style="font-size:10px;color:var(--hi)">MASC '+genPct(masc)+'%</span></div>'
+        +'</div>';
+
+      return aE('parejas','Parejas de árbitros más frecuentes',parejasHtml)
+        +aE('cargadia','Máxima carga por día',cargaHtml)
+        +aE('kmprom','Promedio KM por partido',kmPromHtml)
+        +aE('sedes','Ranking de sedes',sedesHtml)
+        +aE('aranceles','Total aranceles',arancelHtml)
+        +aE('viaticos','Viáticos por club',viatHtml)
+        +aE('costofecha','Costo por fecha/jornada',costoHtml)
+        +aE('costosede','Costo promedio por sede',costoSedeHtml)
+        +aE('genero','Balance FEM vs MASC',genHtml);
+    })()}
       </div>
     </div>`;
 }
