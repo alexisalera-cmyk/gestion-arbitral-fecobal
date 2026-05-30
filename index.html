@@ -978,6 +978,9 @@ function renderEstadisticas(){
           </tbody>
         </table></div>
 
+
+      </div>
+    </div>
     ${(()=>{
       try{
       function aE(id,tit,html){
@@ -1116,8 +1119,7 @@ function renderEstadisticas(){
         +aE('genero','Balance FEM vs MASC',genHtml);
       }catch(e){console.error('Error en estadísticas:',e);return '<div style="color:red;padding:14px">Error: '+e.message+'</div>';}
     })()}
-      </div>
-    </div>`;
+    `;
 }
 
 // ── PANEL ÁRBITRO ────────────────────────────────────────
